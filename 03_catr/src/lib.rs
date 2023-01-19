@@ -43,16 +43,31 @@ pub fn run(args: Args) -> MyResult<()> {
         match open(&filename) {
             Err(err) => eprintln!("Failed to open {}: {}", filename, err),
             // Ok(_) => println!("Opened {}", filename),
-            Ok(f) => cat(f),
+            Ok(f) => cat(f, args.number_lines, args.number_nonblank_lines),
         }
     }
 
     Ok(())
 }
 
-fn cat(f: Box<dyn BufRead>) {
-    for line in f.lines() {
-        println!("{}", line.unwrap())
+fn cat(f: Box<dyn BufRead>, number_lines: bool, number_nonblank_lines: bool) {
+    let mut n_blank = 0;
+
+    for (i, line) in f.lines().enumerate() {
+        let line = line.unwrap();
+
+        if number_lines {
+            println!("{:indent$}\t{}", i + 1, line, indent = 6)
+        } else if number_nonblank_lines {
+            if line.is_empty() {
+                n_blank += 1;
+                println!("");
+            } else {
+                println!("{:indent$}\t{}", i + 1 - n_blank, line, indent = 6)
+            }
+        } else {
+            println!("{}", line);
+        }
     }
 }
 

@@ -62,18 +62,19 @@ pub fn run(args: Args) -> MyResult<()> {
 
 fn cat(f: Box<dyn BufRead>, config: &Config) -> MyResult<()> {
     let mut n_blank = 0;
+    let indent = 6;
 
     for (i, line_result) in f.lines().enumerate() {
         let line = line_result?;
 
         if config.number_lines {
-            println!("{:indent$}\t{}", i + 1, line, indent = 6)
+            println!("{:indent$}\t{}", i + 1, line, indent = indent)
         } else if config.number_nonblank_lines {
             if line.is_empty() {
                 n_blank += 1;
                 println!("");
             } else {
-                println!("{:indent$}\t{}", i + 1 - n_blank, line, indent = 6)
+                println!("{:indent$}\t{}", i + 1 - n_blank, line, indent = indent)
             }
         } else {
             println!("{}", line);

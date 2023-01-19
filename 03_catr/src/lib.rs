@@ -49,17 +49,12 @@ pub fn run(args: Args) -> MyResult<()> {
     };
 
     for filename in args.files {
-        let file = match open(&filename) {
-            Ok(file) => Some(file),
+        match open(&filename) {
+            Ok(file) => cat(file, &config)?,
             Err(err) => {
                 eprintln!("Failed to open {}: {}", filename, err);
-                None
             }
         };
-
-        if let Some(f) = file {
-            cat(f, &config)?;
-        }
     }
 
     Ok(())

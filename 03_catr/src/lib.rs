@@ -30,6 +30,11 @@ pub struct Args {
     number_nonblank_lines: bool,
 }
 
+struct Config {
+    number_lines: bool,
+    number_nonblank_lines: bool,
+}
+
 pub fn get_args() -> MyResult<Args> {
     let args = Args::parse();
 
@@ -38,6 +43,10 @@ pub fn get_args() -> MyResult<Args> {
 
 pub fn run(args: Args) -> MyResult<()> {
     // dbg!(args);
+    let config = Config {
+        number_lines: args.number_lines,
+        number_nonblank_lines: args.number_nonblank_lines,
+    };
 
     for filename in args.files {
         let file = match open(&filename) {
@@ -49,22 +58,22 @@ pub fn run(args: Args) -> MyResult<()> {
         };
 
         if let Some(f) = file {
-            cat(f, args.number_lines, args.number_nonblank_lines)?;
+            cat(f, &config)?;
         }
     }
 
     Ok(())
 }
 
-fn cat(f: Box<dyn BufRead>, number_lines: bool, number_nonblank_lines: bool) -> MyResult<()> {
+fn cat(f: Box<dyn BufRead>, config: &Config) -> MyResult<()> {
     let mut n_blank = 0;
 
     for (i, line_result) in f.lines().enumerate() {
         let line = line_result?;
 
-        if number_lines {
+        if config.number_lines {
             println!("{:indent$}\t{}", i + 1, line, indent = 6)
-        } else if number_nonblank_lines {
+        } else if config.number_nonblank_lines {
             if line.is_empty() {
                 n_blank += 1;
                 println!("");

@@ -48,12 +48,31 @@ impl Args {
 
 pub fn run(args: Args) -> MyResult<()> {
     // dbg!(args);
-    let print = |entry: DirEntry| -> MyResult<()> {
-        if args.types.iter().any(|etype| match etype {
+    let is_valid_type = |entry: &DirEntry| -> bool {
+        args.types.iter().any(|etype| match etype {
             Dir => entry.file_type().is_dir(),
             File => entry.file_type().is_file(),
             Link => entry.file_type().is_symlink(),
-        }) {
+        })
+    };
+
+    let is_valid_name = |entry: &DirEntry| -> bool {
+        if (&args.names).is_empty() {
+            return true;
+        }
+
+        for re in &args.names {
+            // if re.is_match(entry.path().to_str().unwrap()) {
+            if re.is_match(entry.file_name().to_str().unwrap()) {
+                return true;
+            }
+        }
+
+        false
+    };
+
+    let print = |entry: DirEntry| -> MyResult<()> {
+        if is_valid_type(&entry) && is_valid_name(&entry) {
             println!("{}", entry.path().display());
         }
 

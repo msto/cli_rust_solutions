@@ -30,11 +30,6 @@ pub struct Args {
     number_nonblank_lines: bool,
 }
 
-struct Config {
-    number_lines: bool,
-    number_nonblank_lines: bool,
-}
-
 pub fn get_args() -> MyResult<Args> {
     let args = Args::parse();
 
@@ -43,14 +38,10 @@ pub fn get_args() -> MyResult<Args> {
 
 pub fn run(args: Args) -> MyResult<()> {
     // dbg!(args);
-    let config = Config {
-        number_lines: args.number_lines,
-        number_nonblank_lines: args.number_nonblank_lines,
-    };
 
-    for filename in args.files {
+    for filename in args.files.iter() {
         match open(&filename) {
-            Ok(file) => cat(file, &config)?,
+            Ok(file) => cat(file, &args)?,
             Err(err) => {
                 eprintln!("Failed to open {}: {}", filename, err);
             }
@@ -60,7 +51,7 @@ pub fn run(args: Args) -> MyResult<()> {
     Ok(())
 }
 
-fn cat(f: Box<dyn BufRead>, config: &Config) -> MyResult<()> {
+fn cat(f: Box<dyn BufRead>, config: &Args) -> MyResult<()> {
     let mut n_blank = 0;
     let indent = 6;
 

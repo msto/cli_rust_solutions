@@ -38,14 +38,6 @@ pub struct Args {
     types: Vec<EntryType>,
 }
 
-impl Args {
-    fn set_defaults(&mut self) {
-        if self.types.is_empty() {
-            self.types = vec![Dir, File, Link];
-        }
-    }
-}
-
 pub fn run(args: Args) -> MyResult<()> {
     // dbg!(args);
     let is_valid_type = |entry: &DirEntry| -> bool {
@@ -79,6 +71,9 @@ pub fn run(args: Args) -> MyResult<()> {
             .filter(is_valid_name)
             .map(|entry| entry.path().display().to_string())
             .collect::<Vec<_>>();
+
+        // TODO: why can't I map a print statement over this instead of
+        // storing all lines in memory
         // .map(|entry| println!(entry.path().display())?;
 
         println!("{}", entries.join("\n"));
@@ -88,8 +83,7 @@ pub fn run(args: Args) -> MyResult<()> {
 }
 
 pub fn get_args() -> MyResult<Args> {
-    let mut args = Args::parse();
-    args.set_defaults();
+    let args = Args::parse();
 
     Ok(args)
 }

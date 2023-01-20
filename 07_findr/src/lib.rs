@@ -49,44 +49,39 @@ impl Args {
 pub fn run(args: Args) -> MyResult<()> {
     // dbg!(args);
     let is_valid_type = |entry: &DirEntry| -> bool {
-        args.types.iter().any(|etype| match etype {
-            Dir => entry.file_type().is_dir(),
-            File => entry.file_type().is_file(),
-            Link => entry.file_type().is_symlink(),
-        })
+        args.types.is_empty()
+            || args.types.iter().any(|etype| match etype {
+                Dir => entry.file_type().is_dir(),
+                File => entry.file_type().is_file(),
+                Link => entry.file_type().is_symlink(),
+            })
     };
 
     let is_valid_name = |entry: &DirEntry| -> bool {
-        if (&args.names).is_empty() {
-            return true;
-        }
-
-        for re in &args.names {
-            // if re.is_match(entry.path().to_str().unwrap()) {
-            if re.is_match(entry.file_name().to_str().unwrap()) {
-                return true;
-            }
-        }
-
-        false
-    };
-
-    let print = |entry: DirEntry| -> MyResult<()> {
-        if is_valid_type(&entry) && is_valid_name(&entry) {
-            println!("{}", entry.path().display());
-        }
-
-        Ok(())
+        args.names.is_empty()
+            || args
+                .names
+                .iter()
+                .any(|re| re.is_match(&entry.file_name().to_string_lossy()))
     };
 
     for path in args.paths {
-        for entry in WalkDir::new(path) {
-            match entry {
-                // Ok(entry) => println!("{}", entry.path().display()),
-                Ok(entry) => print(entry)?,
-                Err(e) => eprintln!("{}", e),
-            }
-        }
+        let entries = WalkDir::new(path)
+            .into_iter()
+            .filter_map(|e| match e {
+                Err(e) => {
+                    eprintln!("{}", e);
+                    None
+                }
+                Ok(entry) => Some(entry),
+            })
+            .filter(is_valid_type)
+            .filter(is_valid_name)
+            .map(|entry| entry.path().display().to_string())
+            .collect::<Vec<_>>();
+        // .map(|entry| println!(entry.path().display())?;
+
+        println!("{}", entries.join("\n"));
     }
 
     Ok(())

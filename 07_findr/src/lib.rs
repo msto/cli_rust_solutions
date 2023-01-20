@@ -58,7 +58,8 @@ pub fn run(args: Args) -> MyResult<()> {
     };
 
     for path in args.paths {
-        let entries = WalkDir::new(path)
+        // let entries = WalkDir::new(path)
+        WalkDir::new(path)
             .into_iter()
             .filter_map(|e| match e {
                 Err(e) => {
@@ -69,14 +70,11 @@ pub fn run(args: Args) -> MyResult<()> {
             })
             .filter(is_valid_type)
             .filter(is_valid_name)
-            .map(|entry| entry.path().display().to_string())
-            .collect::<Vec<_>>();
+            .for_each(|entry| println!("{}", entry.path().display()));
+        // .map(|entry| entry.path().display().to_string())
+        // .collect::<Vec<_>>();
 
-        // TODO: why can't I map a print statement over this instead of
-        // storing all lines in memory
-        // .map(|entry| println!(entry.path().display())?;
-
-        println!("{}", entries.join("\n"));
+        // println!("{}", entries.join("\n"));
     }
 
     Ok(())

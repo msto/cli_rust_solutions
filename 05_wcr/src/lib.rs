@@ -120,35 +120,54 @@ pub fn run(args: Args) -> MyResult<()> {
         };
 
         if let Some(stats) = stats {
-            if args.chars {
-                println!(
-                    "{:>8}{:>8}{:>8} {}",
-                    stats.n_lines, stats.n_words, stats.n_chars, filename
-                );
-            } else {
-                println!(
-                    "{:>8}{:>8}{:>8} {}",
-                    stats.n_lines, stats.n_words, stats.n_bytes, filename
-                );
-            }
+            print_stats(
+                &stats, filename, args.lines, args.words, args.chars, args.bytes,
+            );
 
             totals += stats;
         }
     }
 
-    if args.chars {
-        println!(
-            "{:>8}{:>8}{:>8} {}",
-            totals.n_lines, totals.n_words, totals.n_chars, "total"
-        );
-    } else {
-        println!(
-            "{:>8}{:>8}{:>8} {}",
-            totals.n_lines, totals.n_words, totals.n_bytes, "total"
+    if args.files.len() > 1 {
+        print_stats(
+            &totals, "total", args.lines, args.words, args.chars, args.bytes,
         );
     }
 
     Ok(())
+}
+
+fn print_stats(
+    stats: &FileInfo,
+    filename: &str,
+    lines: bool,
+    words: bool,
+    chars: bool,
+    bytes: bool,
+) {
+    if chars && bytes {
+        panic!("Cannot print both chars and bytes.")
+    }
+
+    let mut statline = String::new();
+    if lines {
+        statline += &format!("{:>8}", stats.n_lines);
+    }
+    if words {
+        statline += &format!("{:>8}", stats.n_words);
+    }
+    if chars {
+        statline += &format!("{:>8}", stats.n_chars);
+    }
+    if bytes {
+        statline += &format!("{:>8}", stats.n_bytes);
+    }
+
+    if filename != "-" {
+        statline += &format!(" {}", filename);
+    }
+
+    println!("{}", statline)
 }
 
 fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {

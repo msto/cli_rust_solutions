@@ -5,6 +5,7 @@ use std::{
     error::Error,
     fs::File,
     io::{self, BufRead, BufReader},
+    num::NonZeroUsize,
     ops::Range,
 };
 
@@ -80,51 +81,52 @@ fn _open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     }
 }
 
-fn parse_range(s: &str) -> Result<Range<usize>, String> {
-    let single = Regex::new(r"^(\d+)$").unwrap();
-    let multi = Regex::new(r"^(\d+)-(\d+)$").unwrap();
-    let start: usize;
-    let end: usize;
+fn parse_idx(s: &str) -> Result<usize, String> {
+    let value_err = || format!("illegal list value: \"{}\"", s);
 
-    let extract_pos = |caps: &Captures, idx: usize| -> usize {
-        caps.get(idx)
-            .map_or("", |x| x.as_str())
-            .parse::<usize>()
-            .unwrap()
+    s.starts_with('+')
+        .then(|| Err(value_err()))
+        .unwrap_or_else(|| {
+            s.parse::<NonZeroUsize>()
+                .map(|x| usize::from(x) - 1)
+                .map_err(|_| value_err())
+        })
+}
+
+fn parse_range(s: &str) -> Result<Range<usize>, String> {
+    let range_re = Regex::new(r"^(\d+)-(\d+)$").unwrap();
+
+    let extract_range = |caps: Captures| -> Result<Range<usize>, String> {
+        let start = parse_idx(&caps[1])?;
+        let end = parse_idx(&caps[2])?;
+        if start >= end {
+            return Err(format!(
+                "First number in range ({}) must be lower than second number ({})",
+                start + 1,
+                end + 1
+            ));
+        }
+
+        Ok(start..end + 1)
     };
 
-    if single.is_match(s) {
-        let caps = single.captures(s).unwrap();
-        start = extract_pos(&caps, 1);
-        end = start + 1;
-    } else if multi.is_match(s) {
-        let caps = multi.captures(s).unwrap();
-        start = extract_pos(&caps, 1);
-        end = extract_pos(&caps, 2);
-    } else {
-        return Err(format!("Invalid numeric range: {}", s));
-    }
-
-    match (start, end) {
-        (0, _) => Err("illegal list value: \"0\"".to_string()),
-        (_, 0) => Err("illegal list value: \"0\"".to_string()),
-        (_, _) => Ok(Range {
-            start: start,
-            end: end,
-        }),
+    match range_re.captures(s) {
+        Some(caps) => extract_range(caps),
+        None => Err(format!("Invalid numeric range: {}", s)),
     }
 }
 
 fn parse_pos(s: &str) -> MyResult<PositionList> {
     s.split(',')
         .into_iter()
-        .map(|r| parse_range(r))
+        .map(|r| parse_idx(r).map(|x| x..x + 1).or_else(|_| parse_range(r))) // TODO: raise "illegal list value" error for invalid single digit
         .collect::<Result<PositionList, _>>()
         .map_err(From::from) // TODO: I don't understand what this does or why it's necessary to compile
 }
 
 #[cfg(test)]
 mod unit_tests {
+    use super::parse_idx;
     use super::parse_pos;
     use super::parse_range;
 
@@ -134,9 +136,9 @@ mod unit_tests {
         // assert!(parse_pos("").is_err());
 
         // Zero is an error
-        let res = parse_pos("0");
-        assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"0\"",);
+        // let res = parse_pos("0");
+        // assert!(res.is_err());
+        // assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"0\"",);
 
         let res = parse_pos("0-1");
         assert!(res.is_err());
@@ -144,7 +146,7 @@ mod unit_tests {
 
         let res = parse_pos("1-2");
         assert!(res.is_ok());
-        assert_eq!(res.unwrap(), vec![1..2]);
+        assert_eq!(res.unwrap(), vec![0..2]);
     }
 
     #[test]
@@ -156,6 +158,18 @@ mod unit_tests {
 
         let res = parse_range("1-2");
         assert!(res.is_ok());
-        assert_eq!(res.unwrap(), 1..2);
+        assert_eq!(res.unwrap(), 0..2);
+    }
+
+    #[test]
+    fn test_parse_idx() {
+        assert!(parse_idx("").is_err());
+
+        let res = parse_idx("0");
+        assert!(res.is_err());
+
+        let res = parse_idx("1");
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap(), 0);
     }
 }

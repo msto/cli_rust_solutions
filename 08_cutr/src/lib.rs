@@ -70,7 +70,14 @@ pub enum Extract {
 }
 
 pub fn run(cfg: Config) -> MyResult<()> {
-    dbg!(cfg);
+    // dbg!(cfg);
+
+    for path in &cfg.paths {
+        match open(path) {
+            Ok(file) => println!("Opened {}", path),
+            Err(err) => eprintln!("{}: {}", path, err),
+        }
+    }
 
     Ok(())
 }
@@ -103,7 +110,7 @@ pub fn get_args() -> MyResult<Config> {
     })
 }
 
-fn _open(filename: &str) -> MyResult<Box<dyn BufRead>> {
+fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     match filename {
         "-" => Ok(Box::new(BufReader::new(io::stdin()))),
         _ => Ok(Box::new(BufReader::new(File::open(filename)?))),

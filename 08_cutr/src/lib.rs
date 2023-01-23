@@ -171,7 +171,7 @@ fn extract_chars(line: &str, char_pos: &[Range<usize>]) -> String {
 }
 
 fn extract_bytes(line: &str, byte_pos: &[Range<usize>]) -> String {
-    let bytes: Vec<_> = byte_pos
+    let bytes: Vec<_> = byte_pos // TODO: why is type declaration for `bytes` necessary here
         .iter()
         .cloned()
         .flatten()
@@ -181,18 +181,20 @@ fn extract_bytes(line: &str, byte_pos: &[Range<usize>]) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
-fn extract_fields(
-    record: &StringRecord,
-    field_pos: &[Range<usize>]
-)
+fn extract_fields(record: &StringRecord, field_pos: &[Range<usize>]) -> Vec<String> {
+    field_pos
+        .iter()
+        .cloned()
+        .flatten()
+        .filter_map(|i| record.get(i))
+        .map(|x| x.to_string())
+        .collect()
+}
 
 #[cfg(test)]
 mod unit_tests {
-    use super::extract_bytes;
-    use super::extract_chars;
-    use super::parse_idx;
-    use super::parse_pos;
-    use super::parse_range;
+    use super::{extract_bytes, extract_chars, extract_fields, parse_idx, parse_pos, parse_range};
+    use csv::StringRecord;
 
     #[test]
     fn test_parse_pos() {
@@ -348,5 +350,16 @@ mod unit_tests {
         assert_eq!(extract_bytes("ábc", &[0..4]), "ábc".to_string());
         assert_eq!(extract_bytes("ábc", &[3..4, 2..3]), "cb".to_string());
         assert_eq!(extract_bytes("ábc", &[0..2, 5..6]), "á".to_string());
+    }
+
+    #[test]
+    fn test_extract_fields() {
+        let rec = StringRecord::from(vec!["Captain", "Sham", "12345"]);
+
+        assert_eq!(extract_fields(&rec, &[0..1]), &["Captain"]);
+        assert_eq!(extract_fields(&rec, &[1..2]), &["Sham"]);
+        assert_eq!(extract_fields(&rec, &[0..1, 2..3]), &["Captain", "12345"]);
+        assert_eq!(extract_fields(&rec, &[0..1, 3..4]), &["Captain"]);
+        assert_eq!(extract_fields(&rec, &[1..2, 0..1]), &["Sham", "Captain"]);
     }
 }

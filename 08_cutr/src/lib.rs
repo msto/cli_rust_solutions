@@ -1,4 +1,4 @@
-// use crate::Extract::*;
+use crate::Extract::*;
 use clap::Parser;
 use regex::{Captures, Regex};
 use std::{
@@ -50,9 +50,16 @@ pub struct Args {
         long = "delim",
         id = "DELIM",
         help = "Field delimiter",
-        default_value_t = '\t'
+        default_value = "\t"
     )]
-    delimiter: char,
+    delimiter: String,
+}
+
+#[derive(Debug)]
+pub struct Config {
+    paths: Vec<String>,
+    delimiter: u8,
+    extract: Extract,
 }
 
 #[derive(Debug)]
@@ -62,16 +69,38 @@ pub enum Extract {
     Chars(PositionList),
 }
 
-pub fn run(args: Args) -> MyResult<()> {
-    dbg!(args);
+pub fn run(cfg: Config) -> MyResult<()> {
+    dbg!(cfg);
 
     Ok(())
 }
 
-pub fn get_args() -> MyResult<Args> {
+pub fn get_args() -> MyResult<Config> {
     let args = Args::parse();
 
-    Ok(args)
+    let extract = if let Some(pos) = args.fields {
+        Fields(parse_pos(&pos)?)
+    } else if let Some(pos) = args.bytes {
+        Bytes(parse_pos(&pos)?)
+    } else if let Some(pos) = args.characters {
+        Chars(parse_pos(&pos)?)
+    } else {
+        return Err(From::from("Must have --fields, --bytes, or --chars"));
+    };
+
+    let delim_bytes = args.delimiter.as_bytes();
+    if delim_bytes.len() != 1 {
+        return Err(From::from(format!(
+            "--delim \"{}\" must be a single byte",
+            args.delimiter
+        )));
+    }
+
+    Ok(Config {
+        paths: args.paths,
+        delimiter: *delim_bytes.first().unwrap(),
+        extract: extract,
+    })
 }
 
 fn _open(filename: &str) -> MyResult<Box<dyn BufRead>> {
@@ -119,7 +148,6 @@ fn parse_range(s: &str) -> Result<Range<usize>, String> {
 fn parse_pos(s: &str) -> MyResult<PositionList> {
     s.split(',')
         .into_iter()
-        // .map(|r| parse_range(r))
         .map(|r| parse_idx(r).map(|x| x..x + 1).or_else(|_| parse_range(r)))
         .collect::<Result<PositionList, _>>()
         .map_err(From::from) // TODO: I don't understand what this does or why it's necessary to compile

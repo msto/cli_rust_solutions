@@ -112,14 +112,15 @@ fn parse_range(s: &str) -> Result<Range<usize>, String> {
 
     match range_re.captures(s) {
         Some(caps) => extract_range(caps),
-        None => Err(format!("Invalid numeric range: {}", s)),
+        None => Err(format!("illegal list value: \"{}\"", s)),
     }
 }
 
 fn parse_pos(s: &str) -> MyResult<PositionList> {
     s.split(',')
         .into_iter()
-        .map(|r| parse_idx(r).map(|x| x..x + 1).or_else(|_| parse_range(r))) // TODO: raise "illegal list value" error for invalid single digit
+        // .map(|r| parse_range(r))
+        .map(|r| parse_idx(r).map(|x| x..x + 1).or_else(|_| parse_range(r)))
         .collect::<Result<PositionList, _>>()
         .map_err(From::from) // TODO: I don't understand what this does or why it's necessary to compile
 }
@@ -136,13 +137,18 @@ mod unit_tests {
         // assert!(parse_pos("").is_err());
 
         // Zero is an error
-        // let res = parse_pos("0");
-        // assert!(res.is_err());
-        // assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"0\"",);
+        let res = parse_pos("0");
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"0\"",);
 
         let res = parse_pos("0-1");
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"0\"",);
+
+        // Leading "+" is an error
+        let res = parse_pos("+1");
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "illegal list value: \"+1\"");
 
         let res = parse_pos("1-2");
         assert!(res.is_ok());

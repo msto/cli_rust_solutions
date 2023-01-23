@@ -1,5 +1,6 @@
 use crate::Extract::*;
 use clap::Parser;
+use csv::StringRecord;
 use regex::{Captures, Regex};
 use std::{
     error::Error,
@@ -160,8 +161,35 @@ fn parse_pos(s: &str) -> MyResult<PositionList> {
         .map_err(From::from) // TODO: I don't understand what this does or why it's necessary to compile
 }
 
+fn extract_chars(line: &str, char_pos: &[Range<usize>]) -> String {
+    char_pos
+        .iter()
+        .cloned() // TODO: why is cloned() necessary here (and why can't we dereference char_pos at the beginning)
+        .flatten()
+        .filter_map(|i| line.chars().nth(i))
+        .collect()
+}
+
+fn extract_bytes(line: &str, byte_pos: &[Range<usize>]) -> String {
+    let bytes: Vec<_> = byte_pos
+        .iter()
+        .cloned()
+        .flatten()
+        .filter_map(|i| line.bytes().nth(i))
+        .collect();
+
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+fn extract_fields(
+    record: &StringRecord,
+    field_pos: &[Range<usize>]
+)
+
 #[cfg(test)]
 mod unit_tests {
+    use super::extract_bytes;
+    use super::extract_chars;
     use super::parse_idx;
     use super::parse_pos;
     use super::parse_range;
@@ -300,5 +328,25 @@ mod unit_tests {
         let res = parse_idx("1");
         assert!(res.is_ok());
         assert_eq!(res.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_extract_chars() {
+        assert_eq!(extract_chars("", &[0..1]), "".to_string());
+        assert_eq!(extract_chars("ábc", &[0..1]), "á".to_string());
+        assert_eq!(extract_chars("ábc", &[0..1, 2..3]), "ác".to_string());
+        assert_eq!(extract_chars("ábc", &[0..3]), "ábc".to_string());
+        assert_eq!(extract_chars("ábc", &[2..3, 1..2]), "cb".to_string());
+        assert_eq!(extract_chars("ábc", &[0..1, 1..2, 4..5]), "áb".to_string());
+    }
+
+    #[test]
+    fn test_extract_bytes() {
+        assert_eq!(extract_bytes("ábc", &[0..1]), "�".to_string());
+        assert_eq!(extract_bytes("ábc", &[0..2]), "á".to_string());
+        assert_eq!(extract_bytes("ábc", &[0..3]), "áb".to_string());
+        assert_eq!(extract_bytes("ábc", &[0..4]), "ábc".to_string());
+        assert_eq!(extract_bytes("ábc", &[3..4, 2..3]), "cb".to_string());
+        assert_eq!(extract_bytes("ábc", &[0..2, 5..6]), "á".to_string());
     }
 }
